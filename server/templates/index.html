@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Court Cause List Downloader</title>
+  <style>
+    :root {
+      --primary: #007bff;
+      --primary-dark: #0056b3;
+      --bg: #eef1f6;
+      --text: #1c1c1c;
+      --card-bg: #ffffff;
+      --border: #dcdfe3;
+      --success: #28a745;
+      --error: #dc3545;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(135deg, #f6f8fc, #e9edf3);
+      color: var(--text);
+      margin: 0;
+      padding: 40px 20px;
+    }
+
+    h2 {
+      text-align: center;
+      font-weight: 600;
+      color: var(--primary-dark);
+      margin-bottom: 25px;
+    }
+
+    form {
+      background: var(--card-bg);
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 600px;
+      margin: auto;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.07);
+      border: 1px solid var(--border);
+    }
+
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      margin-top: 6px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #fafbfc;
+      font-size: 15px;
+      transition:
+        border 0.2s ease,
+        box-shadow 0.2s ease;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+      outline: none;
+    }
+
+    button {
+      margin-top: 25px;
+      width: 100%;
+      padding: 12px;
+      background: green;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition:
+        background 0.3s ease,
+        transform 0.1s ease;
+    }
+
+    button:hover {
+      background: white;
+      border: 1px solid green;
+      color: green;
+      transform: translateY(-1px);
+    }
+
+    #log {
+      max-width: 600px;
+      margin: 30px auto;
+      padding: 20px;
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.07);
+      border: 1px solid var(--border);
+    }
+
+    #log h3 {
+      margin-top: 0;
+      color: var(--primary-dark);
+      text-align: center;
+    }
+
+    .msg {
+      margin: 10px 0;
+      padding: 16px 12px;
+      border-radius: 6px;
+      background: #f8f9fb;
+      border: 1px solid var(--border);
+      font-size: 14px;
+    }
+
+    .msg a {
+      color: white;
+      background-color: blue;
+      text-decoration: none;
+      font-weight: 600;
+      padding: 4px;
+      border-radius: 8px;
+      margin-top: 4px;
+      transition: background 0.3s ease;
+    }
+
+    .msg a:hover {
+      color: blue;
+      background-color: white;
+      border: 1px solid blue;
+    }
+
+    .success {
+      color: var(--success);
+    }
+
+    .error {
+      color: var(--error);
+    }
+  </style>
+</head>
+
+<body>
+  <h2>Cause List Downloader</h2>
+
+  <form id="courtForm">
+    <label for="chosen_state">State:</label>
+    <input type="text" name="chosen_state" required value="Chandigarh" />
+
+    <label for="chosen_dist">District:</label>
+    <input type="text" name="chosen_dist" required value="Chandigarh" />
+
+    <label for="chosen_court">Court Complex:</label>
+    <input type="text" name="chosen_court" required value="District Court Chandigarh" />
+
+    <label for="chosen_court_name">Court Name (for single court only):</label>
+    <input type="text" name="chosen_court_name" />
+
+    <label for="chosen_date">Date (dd-mm-yyyy):</label>
+    <input type="text" name="chosen_date" required value="19-10-2025" />
+
+    <label for="case_type">Case Type:</label>
+    <select name="case_type" required>
+      <option value="Civil">Civil</option>
+      <option value="Criminal">Criminal</option>
+    </select>
+
+    <button type="submit">Submit</button>
+  </form>
+
+  <div id="log">
+    <h3>Live Updates</h3>
+    <div id="messages"></div>
+  </div>
+
+  <script>
+    const ws = new WebSocket(`ws://${location.host}/pdf`);
+    const messagesDiv = document.getElementById("messages");
+    const form = document.getElementById("courtForm");
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      const msg = document.createElement("div");
+      msg.classList.add("msg");
+
+      if (data.error) {
+        msg.innerHTML = `<p class='error'>Error: ${data.error}</p>`;
+      } else {
+        msg.innerHTML = `<b>CNR:</b> ${data.cnr} <a href="${data.path}" target="_blank">Download PDF</a>`;
+      }
+      messagesDiv.appendChild(msg);
+    };
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+
+      const isSingle = formData.get("chosen_court_name")?.trim() !== "";
+      const url = isSingle ? "/api/court" : "/api/court/all";
+      messagesDiv.innerHTML = "";
+      await fetch(url, {
+        method: "POST",
+        body: formData,
+      });
+    });
+  </script>
+</body>
+
+</html>
+
+
+</html>
